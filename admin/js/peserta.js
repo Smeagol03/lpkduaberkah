@@ -75,28 +75,31 @@ function displayPesertaData(data) {
     const row = document.createElement("tr");
     row.className = "text-gray-700 dark:text-gray-400";
 
-    // Format status badge
+    // Status badge
     let statusBadge = "";
     switch (peserta.statusPeserta) {
       case "aktif":
-        statusBadge = `<span class="px-2 py-1 font-semibold leading-tight text-green-700 bg-green-100 rounded-full dark:bg-green-700 dark:text-green-100">Aktif</span>`;
+        statusBadge = `<span class="px-2 py-1 font-semibold leading-tight text-green-700 bg-green-100 rounded-full">Aktif</span>`;
         break;
       case "lulus":
-        statusBadge = `<span class="px-2 py-1 font-semibold leading-tight text-blue-700 bg-blue-100 rounded-full dark:bg-blue-700 dark:text-blue-100">Lulus</span>`;
+        statusBadge = `<span class="px-2 py-1 font-semibold leading-tight text-blue-700 bg-blue-100 rounded-full">Lulus</span>`;
         break;
       case "tidak lulus":
-        statusBadge = `<span class="px-2 py-1 font-semibold leading-tight text-red-700 bg-red-100 rounded-full dark:bg-red-700 dark:text-red-100">Tidak Lulus</span>`;
+        statusBadge = `<span class="px-2 py-1 font-semibold leading-tight text-red-700 bg-red-100 rounded-full">Tidak Lulus</span>`;
         break;
       default:
-        statusBadge = `<span class="px-2 py-1 font-semibold leading-tight text-gray-700 bg-gray-100 rounded-full dark:bg-gray-700 dark:text-gray-100">Tidak Diketahui</span>`;
+        statusBadge = `<span class="px-2 py-1 font-semibold leading-tight text-gray-700 bg-gray-100 rounded-full">Tidak Diketahui</span>`;
     }
 
+    // Tampilkan data sesuai struktur 'pendaftar'
     row.innerHTML = `
-      <td class="px-4 py-3">${peserta.namaLengkap || "-"}</td>
-      <td class="px-4 py-3">${peserta.nik || "-"}</td>
-      <td class="px-4 py-3">${peserta.noHP || "-"}</td>
-      <td class="px-4 py-3">${peserta.pendidikan?.jenjang || "-"}</td>
-      <td class="px-4 py-3">${peserta.paketPelatihan?.nama || "-"}</td>
+      <td class="px-4 py-3">${peserta.informasiPribadi?.namaLengkap || "-"}</td>
+      <td class="px-4 py-3">${peserta.informasiPribadi?.nik || "-"}</td>
+      <td class="px-4 py-3">${peserta.informasiPribadi?.noHP || "-"}</td>
+      <td class="px-4 py-3">${
+        peserta.pendidikanPekerjaan?.pendidikanTerakhir || "-"
+      }</td>
+      <td class="px-4 py-3">${peserta.paketPelatihan || "-"}</td>
       <td class="px-4 py-3">${statusBadge}</td>
       <td class="px-4 py-3">${formatDate(peserta.tanggalDaftar)}</td>
       <td class="px-4 py-3">
@@ -110,14 +113,6 @@ function displayPesertaData(data) {
     `;
 
     tableBody.appendChild(row);
-  });
-
-  // Add event listeners for detail buttons
-  document.querySelectorAll("#peserta-table-body button").forEach((button) => {
-    button.addEventListener("click", function () {
-      const pesertaId = this.getAttribute("onclick").match(/'([^']+)'/)[1];
-      showPesertaDetail(pesertaId);
-    });
   });
 }
 
@@ -146,26 +141,28 @@ function showPesertaDetail(id) {
             <div>
               <h4 class="text-lg font-semibold mb-2">Data Pribadi</h4>
               <p><span class="font-medium">Nama Lengkap:</span> ${
-                peserta.namaLengkap || "-"
+                peserta.informasiPribadi?.namaLengkap || "-"
               }</p>
-              <p><span class="font-medium">NIK:</span> ${peserta.nik || "-"}</p>
+              <p><span class="font-medium">NIK:</span> ${
+                peserta.informasiPribadi?.nik || "-"
+              }</p>
               <p><span class="font-medium">Tempat Lahir:</span> ${
-                peserta.tempatLahir || "-"
+                peserta.informasiPribadi?.tempatLahir || "-"
               }</p>
               <p><span class="font-medium">Tanggal Lahir:</span> ${formatDate(
-                peserta.tanggalLahir
+                peserta.informasiPribadi?.tanggalLahir || "-"
               )}</p>
               <p><span class="font-medium">Jenis Kelamin:</span> ${
-                peserta.jenisKelamin || "-"
+                peserta.informasiPribadi?.jenisKelamin || "-"
               }</p>
               <p><span class="font-medium">Alamat:</span> ${
-                peserta.alamat || "-"
+                peserta.informasiPribadi?.alamat || "-"
               }</p>
               <p><span class="font-medium">No. HP:</span> ${
-                peserta.noHP || "-"
+                peserta.informasiPribadi?.noHP || "-"
               }</p>
               <p><span class="font-medium">Email:</span> ${
-                peserta.email || "-"
+                peserta.informasiPribadi?.email || "-"
               }</p>
             </div>
             
@@ -175,13 +172,13 @@ function showPesertaDetail(id) {
                 pendidikan.jenjang || "-"
               }</p>
               <p><span class="font-medium">Institusi:</span> ${
-                pendidikan.institusi || "-"
+                pendidikan.pendidikanPekerjaan?.institusi || "-"
               }</p>
               <p><span class="font-medium">Jurusan:</span> ${
-                pendidikan.jurusan || "-"
+                pendidikan.pendidikanPekerjaan?.jurusan || "-"
               }</p>
               <p><span class="font-medium">Tahun Lulus:</span> ${
-                pendidikan.tahunLulus || "-"
+                pendidikan.pendidikanPekerjaan?.tahunLulus || "-"
               }</p>
               
               <h4 class="text-lg font-semibold mb-2 mt-4">Pekerjaan</h4>
@@ -342,47 +339,47 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Load peserta data
   loadPesertaData();
-  
+
   // Ensure all event listeners are properly attached
   setupEventListeners();
 
-// Function to setup all event listeners
-function setupEventListeners() {
-  // Add event listener for search input
-  const searchInput = document.getElementById("search-peserta");
-  if (searchInput) {
-    searchInput.addEventListener("keyup", function () {
-      const searchTerm = this.value.toLowerCase();
-      filterPesertaData(searchTerm);
-    });
-  }
+  // Function to setup all event listeners
+  function setupEventListeners() {
+    // Add event listener for search input
+    const searchInput = document.getElementById("search-peserta");
+    if (searchInput) {
+      searchInput.addEventListener("keyup", function () {
+        const searchTerm = this.value.toLowerCase();
+        filterPesertaData(searchTerm);
+      });
+    }
 
-  // Add event listeners for modal close buttons
-  const closeButtons = document.querySelectorAll(
-    '[data-modal-hide="detailPeserta"]'
-  );
-  closeButtons.forEach((button) => {
-    button.addEventListener("click", function () {
-      const detailPeserta = document.getElementById("detailPeserta");
-      detailPeserta.classList.add("hidden");
+    // Add event listeners for modal close buttons
+    const closeButtons = document.querySelectorAll(
+      '[data-modal-hide="detailPeserta"]'
+    );
+    closeButtons.forEach((button) => {
+      button.addEventListener("click", function () {
+        const detailPeserta = document.getElementById("detailPeserta");
+        detailPeserta.classList.add("hidden");
+      });
     });
-  });
 
-  // Add event listeners for action buttons
-  const btnLulus = document.getElementById("btn-validasi");
-  if (btnLulus) {
-    btnLulus.addEventListener("click", function () {
-      lulusPeserta(currentPesertaId);
-    });
-  }
+    // Add event listeners for action buttons
+    const btnLulus = document.getElementById("btn-validasi");
+    if (btnLulus) {
+      btnLulus.addEventListener("click", function () {
+        lulusPeserta(currentPesertaId);
+      });
+    }
 
-  const btnTidakLulus = document.getElementById("btn-tolak");
-  if (btnTidakLulus) {
-    btnTidakLulus.addEventListener("click", function () {
-      tidakLulusPeserta(currentPesertaId);
-    });
+    const btnTidakLulus = document.getElementById("btn-tolak");
+    if (btnTidakLulus) {
+      btnTidakLulus.addEventListener("click", function () {
+        tidakLulusPeserta(currentPesertaId);
+      });
+    }
   }
-}
 });
 
 // Make functions available globally
