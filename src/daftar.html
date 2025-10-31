@@ -179,7 +179,8 @@
                         </div>
                         <div class="relative">
                             <label for="nik" class="block text-sm font-medium text-gray-700 mb-1">NIK</label>
-                            <input type="text" id="nik" name="nik" required
+                            <input type="text" id="nik" name="nik" required pattern="\d{16}" maxlength="16"
+                                inputmode="numeric" title="NIK harus 16 digit angka"
                                 class="block w-full px-4 py-3 text-gray-700 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition duration-200 ease-in-out">
                         </div>
                         <div class="relative">
@@ -207,8 +208,9 @@
                         <div class="relative">
                             <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">No. HP /
                                 WhatsApp</label>
-                            <input type="tel" id="phone" name="phone" required pattern="[0-9]{10,13}"
-                                placeholder="Contoh: 087717398311"
+                            <input type="tel" id="phone" name="phone" placeholder="Contoh: 087717398311"
+                                pattern="^\d{10,13}$" maxlength="13" inputmode="numeric"
+                                oninput="this.value = this.value.replace(/\D/g, '').slice(0, 13)"
                                 class="block w-full px-4 py-3 text-gray-700 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition duration-200 ease-in-out">
                             <p class="mt-1 text-xs text-gray-500">Format: 10-13 digit angka tanpa spasi atau karakter
                                 khusus</p>
@@ -274,7 +276,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <label
                             class="flex items-start p-4 border border-gray-200 rounded-lg hover:bg-purple-50 transition-colors cursor-pointer">
-                            <input type="radio" name="package" value="paket1" required
+                            <input type="radio" name="pelatihan" value="paket1" required
                                 class="mt-1 h-5 w-5 text-purple-600 border-gray-300 focus:ring-purple-500">
                             <div class="ml-3">
                                 <span class="font-medium text-gray-800 block mb-1">PAKET 1</span>
@@ -283,7 +285,7 @@
                         </label>
                         <label
                             class="flex items-start p-4 border border-gray-200 rounded-lg hover:bg-purple-50 transition-colors cursor-pointer">
-                            <input type="radio" name="package" value="paket2" required
+                            <input type="radio" name="pelatihan" value="paket2" required
                                 class="mt-1 h-5 w-5 text-purple-600 border-gray-300 focus:ring-purple-500">
                             <div class="ml-3">
                                 <span class="font-medium text-gray-800 block mb-1">PAKET 2</span>
@@ -292,7 +294,7 @@
                         </label>
                         <label
                             class="flex items-start p-4 border border-gray-200 rounded-lg hover:bg-purple-50 transition-colors cursor-pointer">
-                            <input type="radio" name="package" value="paket3" required
+                            <input type="radio" name="pelatihan" value="paket3" required
                                 class="mt-1 h-5 w-5 text-purple-600 border-gray-300 focus:ring-purple-500">
                             <div class="ml-3">
                                 <span class="font-medium text-gray-800 block mb-1">PAKET 3</span>
@@ -301,7 +303,7 @@
                         </label>
                         <label
                             class="flex items-start p-4 border border-gray-200 rounded-lg hover:bg-purple-50 transition-colors cursor-pointer">
-                            <input type="radio" name="package" value="paket4" required
+                            <input type="radio" name="pelatihan" value="paket4" required
                                 class="mt-1 h-5 w-5 text-purple-600 border-gray-300 focus:ring-purple-500">
                             <div class="ml-3">
                                 <span class="font-medium text-gray-800 block mb-1">PAKET 4</span>
@@ -310,7 +312,7 @@
                         </label>
                         <label
                             class="flex items-start p-4 border border-gray-200 rounded-lg hover:bg-purple-50 transition-colors cursor-pointer">
-                            <input type="radio" name="package" value="paket5" required
+                            <input type="radio" name="pelatihan" value="paket5" required
                                 class="mt-1 h-5 w-5 text-purple-600 border-gray-300 focus:ring-purple-500">
                             <div class="ml-3">
                                 <span class="font-medium text-gray-800 block mb-1">PAKET 5</span>
@@ -402,6 +404,8 @@
     </section>
 
     <script src="../js/nav.js"></script>
+    <script src="./daftarjs/pelatihancek.js"></script>
+    <script type="module" src="./daftarjs/daftar.js"></script>
 </body>
 
 </html>
