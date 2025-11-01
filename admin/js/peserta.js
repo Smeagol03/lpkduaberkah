@@ -225,6 +225,38 @@ function showPesertaDetail(id) {
     });
 }
 
+function hapusPeserta(id) {
+  if (!id) return;
+
+  // Konfirmasi penghapusan
+  if (!confirm("Apakah Anda yakin ingin menghapus data peserta ini?")) {
+    return;
+  }
+
+  const pesertaRef = ref(database, `peserta/${id}`);
+  const detailPeserta = document.getElementById("detailPeserta");
+
+  // Hapus data peserta dari database
+  remove(pesertaRef)
+    .then(() => {
+      // Tampilkan pesan sukses
+      alert("Data peserta berhasil dihapus!");
+
+      // Tutup modal setelah notifikasi ditutup
+      detailPeserta.classList.add("hidden");
+
+      // Reset ID peserta saat ini
+      currentPesertaId = null;
+
+      // Muat ulang data peserta
+      loadPesertaData();
+    })
+    .catch((error) => {
+      console.error("Error menghapus data peserta:", error);
+      alert("Gagal menghapus data peserta. Silakan coba lagi.");
+    });
+}
+
 // Function to update peserta status to "lulus" and move to program database
 function lulusPeserta(id) {
   if (!id) return;
@@ -386,6 +418,14 @@ document.addEventListener("DOMContentLoaded", function () {
     if (btnTidakLulus) {
       btnTidakLulus.addEventListener("click", function () {
         tidakLulusPeserta(currentPesertaId);
+      });
+    }
+
+    // Add event listener for hapus button
+    const btnHapus = document.getElementById("btn-hapus");
+    if (btnHapus) {
+      btnHapus.addEventListener("click", function () {
+        hapusPeserta(currentPesertaId);
       });
     }
   }

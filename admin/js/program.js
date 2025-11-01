@@ -189,13 +189,50 @@ function showProgramDetail(programId) {
   document.getElementById("btn-cetak").onclick = function () {
     cetakSertifikat(programData);
   };
+
+  // Set event listener untuk tombol hapus
+  document.getElementById("btn-hapus").onclick = function () {
+    hapusProgram(programData.id);
+  };
 }
 
 // Fungsi untuk mencetak sertifikat
 function cetakSertifikat(programData) {
   // Implementasi cetak sertifikat
-  alert(`Mencetak sertifikat untuk ${programData.namaLengkap}`);
+  alert(
+    `Mencetak sertifikat untuk ${programData.informasiPribadi?.namaLengkap}`
+  );
   // Disini bisa ditambahkan logika untuk mencetak sertifikat
+}
+
+// Fungsi untuk menghapus data program
+function hapusProgram(programId) {
+  if (!programId) {
+    console.error("ID program tidak valid");
+    return;
+  }
+
+  if (confirm("Apakah Anda yakin ingin menghapus data program ini?")) {
+    const programRef = database.ref(`program/${programId}`);
+
+    programRef
+      .remove()
+      .then(() => {
+        // Tutup modal
+        const modal = document.getElementById("detailProgram");
+        modal.classList.add("hidden");
+
+        // Tampilkan pesan sukses
+        alert("Data program berhasil dihapus");
+
+        // Reload data program
+        loadProgramData();
+      })
+      .catch((error) => {
+        console.error("Error menghapus data program:", error);
+        alert("Gagal menghapus data program. Silakan coba lagi.");
+      });
+  }
 }
 
 // Fungsi filter data program

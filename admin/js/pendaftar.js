@@ -44,6 +44,15 @@ function loadPendaftarData() {
         const registrationId = childSnapshot.key;
         const data = childSnapshot.val();
 
+        if (!data) {
+          tableBody.innerHTML = `
+                                  <tr>
+                                    <td colspan="8" class="px-4 py-3 text-center">Tidak ada data pendaftar</td>
+                                  </tr>
+                                `;
+          return;
+        }
+
         // Skip if not in "menunggu" status
         if (data.statusPendaftaran !== "menunggu") return;
 
@@ -240,17 +249,15 @@ function validatePendaftar(id) {
         // Save to peserta database
         set(newPesertaRef, pesertaData)
           .then(() => {
-            // Update status to "diterima" in pendaftar database
-            update(pendaftarRef, {
-              statusPendaftaran: "diterima",
-            })
+            // Hapus data dari database pendaftar setelah berhasil dipindahkan
+            set(pendaftarRef, null)
               .then(() => {
                 // Hide modal using custom approach
                 detailModal.classList.add("hidden");
 
                 // Show success message
                 alert(
-                  "Pendaftar berhasil divalidasi dan dipindahkan ke database peserta!"
+                  "Pendaftar berhasil divalidasi, dipindahkan ke database peserta, dan dihapus dari database pendaftar!"
                 );
 
                 // Reset current pendaftar ID
@@ -260,8 +267,8 @@ function validatePendaftar(id) {
                 loadPendaftarData();
               })
               .catch((error) => {
-                console.error("Error updating pendaftar status:", error);
-                alert("Gagal memperbarui status pendaftar. Silakan coba lagi.");
+                console.error("Error menghapus data pendaftar:", error);
+                alert("Gagal menghapus data pendaftar. Silakan coba lagi.");
               });
           })
           .catch((error) => {
@@ -287,16 +294,14 @@ function rejectPendaftar(id) {
   const pendaftarRef = ref(database, `pendaftar/${id}`);
   const detailModal = document.getElementById("detailModal");
 
-  // Update status to "ditolak"
-  update(pendaftarRef, {
-    statusPendaftaran: "ditolak",
-  })
+  // Hapus data pendaftar yang ditolak
+  set(pendaftarRef, null)
     .then(() => {
       // Hide modal using custom approach
       detailModal.classList.add("hidden");
 
       // Show success message
-      alert("Status pendaftar berhasil diubah menjadi ditolak!");
+      alert("Data pendaftar yang ditolak berhasil dihapus!");
 
       // Reset current pendaftar ID
       currentPendaftarId = null;
@@ -305,8 +310,8 @@ function rejectPendaftar(id) {
       loadPendaftarData();
     })
     .catch((error) => {
-      console.error("Error updating pendaftar status:", error);
-      alert("Gagal memperbarui status pendaftar. Silakan coba lagi.");
+      console.error("Error menghapus data pendaftar:", error);
+      alert("Gagal menghapus data pendaftar. Silakan coba lagi.");
     });
 }
 
@@ -323,13 +328,19 @@ function filterPendaftarData(searchTerm) {
         const pendaftar = data[key];
         // Skip if not in "menunggu" status
         if (pendaftar.statusPendaftaran !== "menunggu") return;
-        
+
         // Search in multiple fields
         if (
-          pendaftar.informasiPribadi?.namaLengkap?.toLowerCase().includes(searchTerm) ||
+          pendaftar.informasiPribadi?.namaLengkap
+            ?.toLowerCase()
+            .includes(searchTerm) ||
           pendaftar.informasiPribadi?.nik?.toLowerCase().includes(searchTerm) ||
-          pendaftar.informasiPribadi?.noHP?.toLowerCase().includes(searchTerm) ||
-          pendaftar.pendidikanPekerjaan?.pendidikanTerakhir?.toLowerCase().includes(searchTerm) ||
+          pendaftar.informasiPribadi?.noHP
+            ?.toLowerCase()
+            .includes(searchTerm) ||
+          pendaftar.pendidikanPekerjaan?.pendidikanTerakhir
+            ?.toLowerCase()
+            .includes(searchTerm) ||
           pendaftar.paketPelatihan?.toLowerCase().includes(searchTerm)
         ) {
           filteredData[key] = pendaftar;
@@ -347,7 +358,7 @@ function filterPendaftarData(searchTerm) {
 // Function to display filtered pendaftar data
 function displayFilteredPendaftarData(data) {
   const tableBody = document.getElementById("pendaftar-table-body");
-  
+
   // Clear existing table data
   tableBody.innerHTML = "";
 
@@ -446,7 +457,7 @@ document.addEventListener("DOMContentLoaded", () => {
       detailModal.classList.add("hidden");
     });
   });
-  
+
   // Add event listener for search input
   const searchInput = document.getElementById("search-pendaftar");
   if (searchInput) {
