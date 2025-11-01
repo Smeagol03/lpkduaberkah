@@ -23,33 +23,58 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
+// Fungsi untuk sanitasi input (mencegah XSS)
+function sanitizeInput(input) {
+  if (typeof input !== "string") return input;
+
+  // Menghilangkan karakter HTML berbahaya
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;")
+    .trim();
+}
+
 // Fungsi untuk mengumpulkan data formulir
 function getFormData() {
   return {
     informasiPribadi: {
-      namaLengkap: document.getElementById("fullName").value,
-      nik: document.getElementById("nik").value,
-      tempatLahir: document.getElementById("birthPlace").value,
-      tanggalLahir: document.getElementById("birthDate").value,
-      jenisKelamin: document.getElementById("gender").value,
-      noHP: document.getElementById("phone").value,
-      alamat: document.getElementById("address").value,
+      namaLengkap: sanitizeInput(document.getElementById("fullName").value),
+      nik: sanitizeInput(document.getElementById("nik").value),
+      tempatLahir: sanitizeInput(document.getElementById("birthPlace").value),
+      tanggalLahir: sanitizeInput(document.getElementById("birthDate").value),
+      jenisKelamin: sanitizeInput(document.getElementById("gender").value),
+      noHP: sanitizeInput(document.getElementById("phone").value),
+      alamat: sanitizeInput(document.getElementById("address").value),
     },
     pendidikanPekerjaan: {
-      pendidikanTerakhir: document.getElementById("education").value,
+      pendidikanTerakhir: sanitizeInput(
+        document.getElementById("education").value
+      ),
       pekerjaanSaatIni:
-        document.getElementById("occupation").value || "Tidak ada",
+        sanitizeInput(document.getElementById("occupation").value) ||
+        "Tidak ada",
     },
     paketPelatihan:
-      document.querySelector('input[name="pelatihan"]:checked')?.value || "",
+      sanitizeInput(
+        document.querySelector('input[name="pelatihan"]:checked')?.value
+      ) || "",
     motivasiReferensi: {
       alasanMengikuti:
-        document.getElementById("motivation").value || "Tidak diisi",
+        sanitizeInput(document.getElementById("motivation").value) ||
+        "Tidak diisi",
       sumberInformasi:
-        document.getElementById("reference").value || "Tidak diisi",
+        sanitizeInput(document.getElementById("reference").value) ||
+        "Tidak diisi",
     },
     statusPendaftaran: "menunggu",
     tanggalDaftar: new Date().toISOString(),
+    validasi: {
+      inputDivalidasi: true,
+      waktuValidasi: new Date().toISOString(),
+    },
   };
 }
 
@@ -108,7 +133,15 @@ async function validateForm() {
     return false;
   }
 
-  // Validasi nomor HP (hanya angka)
+  // Validasi nama (hanya huruf, spasi, dan tanda hubung)
+  const nameInput = document.getElementById("fullName").value;
+  if (!/^[a-zA-Z\s\-']+$/.test(nameInput)) {
+    alert("Nama hanya boleh berisi huruf, spasi, dan tanda hubung");
+    document.getElementById("fullName").focus();
+    return false;
+  }
+
+  // Validasi nomor HP (hanya angka dan format yang benar)
   const phoneInput = document.getElementById("phone").value;
   if (!/^08\d{8,11}$/.test(phoneInput)) {
     alert("Nomor HP tidak valid. Gunakan format 08xxxxxxxxx");
@@ -121,6 +154,14 @@ async function validateForm() {
   if (!/^\d{16}$/.test(nikInput)) {
     alert("NIK harus terdiri dari 16 digit angka");
     document.getElementById("nik").focus();
+    return false;
+  }
+
+  // Validasi tempat lahir (hanya huruf, spasi, dan tanda hubung)
+  const birthPlaceInput = document.getElementById("birthPlace").value;
+  if (!/^[a-zA-Z\s\-']+$/.test(birthPlaceInput)) {
+    alert("Tempat lahir hanya boleh berisi huruf, spasi, dan tanda hubung");
+    document.getElementById("birthPlace").focus();
     return false;
   }
 
