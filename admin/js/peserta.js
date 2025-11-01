@@ -161,57 +161,31 @@ function showPesertaDetail(id) {
               <p><span class="font-medium">No. HP:</span> ${
                 peserta.informasiPribadi?.noHP || "-"
               }</p>
-              <p><span class="font-medium">Email:</span> ${
-                peserta.informasiPribadi?.email || "-"
-              }</p>
             </div>
             
             <div>
-              <h4 class="text-lg font-semibold mb-2">Pendidikan</h4>
-              <p><span class="font-medium">Jenjang:</span> ${
-                pendidikan.jenjang || "-"
+              <h4 class="text-lg font-semibold mb-2">Pendidikan dan Pekerjaan</h4>
+              <p><span class="font-medium">Pendidikan Terakhir:</span> ${
+                peserta.pendidikanPekerjaan?.pendidikanTerakhir || "-"
               }</p>
-              <p><span class="font-medium">Institusi:</span> ${
-                pendidikan.pendidikanPekerjaan?.institusi || "-"
+              <p><span class="font-medium">Pekerjaan Saat Ini:</span> ${
+                peserta.pendidikanPekerjaan?.pekerjaanSaatIni || "-"
               }</p>
-              <p><span class="font-medium">Jurusan:</span> ${
-                pendidikan.pendidikanPekerjaan?.jurusan || "-"
-              }</p>
-              <p><span class="font-medium">Tahun Lulus:</span> ${
-                pendidikan.pendidikanPekerjaan?.tahunLulus || "-"
-              }</p>
-              
-              <h4 class="text-lg font-semibold mb-2 mt-4">Pekerjaan</h4>
-              <p><span class="font-medium">Status:</span> ${
-                pekerjaan.status || "-"
-              }</p>
-              <p><span class="font-medium">Nama Perusahaan:</span> ${
-                pekerjaan.namaPerusahaan || "-"
-              }</p>
-              <p><span class="font-medium">Jabatan:</span> ${
-                pekerjaan.jabatan || "-"
-              }</p>
+                        
             </div>
-          </div>
-          
-          <div class="mt-4">
+            <div class="mt-4">
             <h4 class="text-lg font-semibold mb-2">Paket Pelatihan</h4>
             <p><span class="font-medium">Nama Paket:</span> ${
-              paketPelatihan.nama || "-"
-            }</p>
-            <p><span class="font-medium">Durasi:</span> ${
-              paketPelatihan.durasi || "-"
-            }</p>
-            <p><span class="font-medium">Biaya:</span> ${
-              paketPelatihan.biaya
-                ? `Rp ${parseInt(paketPelatihan.biaya).toLocaleString("id-ID")}`
-                : "-"
+              peserta.paketPelatihan || "-"
             }</p>
           </div>
           
           <div class="mt-4">
             <h4 class="text-lg font-semibold mb-2">Motivasi</h4>
-            <p>${peserta.motivasi || "-"}</p>
+            <p>${peserta.motivasiReferensi?.alasanMengikuti || "-"}</p>
+            <p><span class="font-medium">Sumber Informasi:</span> ${
+              peserta.motivasiReferensi?.sumberInformasi || "-"
+            }</p>
           </div>
           
           <div class="mt-4">
@@ -223,6 +197,8 @@ function showPesertaDetail(id) {
               peserta.tanggalDiterima
             )}</p>
           </div>
+          </div>
+               
         `;
 
         modalContent.innerHTML = content;
@@ -232,6 +208,16 @@ function showPesertaDetail(id) {
       } else {
         alert("Data peserta tidak ditemukan!");
       }
+
+      detailPeserta.classList.add(
+        "fixed",
+        "inset-0",
+        "z-50",
+        "flex",
+        "items-center",
+        "justify-center",
+        "bg-gray-900/30"
+      );
     })
     .catch((error) => {
       console.error("Error getting peserta data:", error);
@@ -239,24 +225,40 @@ function showPesertaDetail(id) {
     });
 }
 
-// Function to update peserta status to "lulus"
+// Function to update peserta status to "lulus" and move to program database
 function lulusPeserta(id) {
   if (!id) return;
 
   const pesertaRef = ref(database, `peserta/${id}`);
   const detailPeserta = document.getElementById("detailPeserta");
 
-  // Update status to "lulus"
-  update(pesertaRef, {
-    statusPeserta: "lulus",
-    tanggalLulus: new Date().toISOString(),
-  })
+  // Get peserta data first
+  get(pesertaRef)
+    .then((snapshot) => {
+      const pesertaData = snapshot.val();
+      if (!pesertaData) {
+        throw new Error("Data peserta tidak ditemukan");
+      }
+
+      // Add tanggalLulus to the data
+      pesertaData.statusPeserta = "lulus";
+      pesertaData.tanggalLulus = new Date().toISOString();
+
+      // Create a reference to the program database
+      const programRef = ref(database, "program");
+
+      // Push data to program database
+      return push(programRef, pesertaData).then(() => {
+        // After successfully adding to program, remove from peserta
+        return remove(pesertaRef);
+      });
+    })
     .then(() => {
       // Hide modal using custom approach
       detailPeserta.classList.add("hidden");
 
       // Show success message
-      alert("Status peserta berhasil diubah menjadi lulus!");
+      alert("Peserta berhasil dipindahkan ke database program!");
 
       // Reset current peserta ID
       currentPesertaId = null;
@@ -265,8 +267,8 @@ function lulusPeserta(id) {
       loadPesertaData();
     })
     .catch((error) => {
-      console.error("Error updating peserta status:", error);
-      alert("Gagal memperbarui status peserta. Silakan coba lagi.");
+      console.error("Error memindahkan peserta ke program:", error);
+      alert("Gagal memindahkan peserta ke program. Silakan coba lagi.");
     });
 }
 
@@ -314,12 +316,19 @@ function filterPesertaData(searchTerm) {
         const peserta = data[key];
         // Search in multiple fields
         if (
-          peserta.namaLengkap?.toLowerCase().includes(searchTerm) ||
-          peserta.nik?.toLowerCase().includes(searchTerm) ||
-          peserta.noHP?.toLowerCase().includes(searchTerm) ||
-          peserta.pendidikan?.jenjang?.toLowerCase().includes(searchTerm) ||
-          peserta.paketPelatihan?.nama?.toLowerCase().includes(searchTerm) ||
-          peserta.statusPeserta?.toLowerCase().includes(searchTerm)
+          peserta.informasiPribadi?.namaLengkap
+            ?.toLowerCase()
+            .includes(searchTerm) ||
+          peserta.informasiPribadi?.nik?.toLowerCase().includes(searchTerm) ||
+          peserta.informasiPribadi?.noHP?.toLowerCase().includes(searchTerm) ||
+          peserta.pendidikanPekerjaan?.pendidikanTerakhir
+            ?.toLowerCase()
+            .includes(searchTerm) ||
+          peserta.paketPelatihan?.toLowerCase().includes(searchTerm) ||
+          peserta.statusPeserta?.toLowerCase().includes(searchTerm) ||
+          formatDate(peserta.tanggalDiterima)
+            ?.toLowerCase()
+            .includes(searchTerm)
         ) {
           filteredData[key] = peserta;
         }
