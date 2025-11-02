@@ -11,6 +11,7 @@
       "Courier New", monospace;
     --color-red-100: #FEE2E2;
     --color-red-300: #FCA5A5;
+    --color-red-400: #F87171;
     --color-red-500: #EF4444;
     --color-red-600: #DC2626;
     --color-red-700: #B91C1C;
@@ -860,6 +861,9 @@
   }
   .border-purple-500 {
     border-color: var(--color-purple-500);
+  }
+  .border-red-400 {
+    border-color: var(--color-red-400);
   }
   .border-red-500 {
     border-color: var(--color-red-500);
@@ -1740,6 +1744,11 @@
   .sm\:hidden {
     @media (width >= 40rem) {
       display: none;
+    }
+  }
+  .sm\:inline {
+    @media (width >= 40rem) {
+      display: inline;
     }
   }
   .sm\:h-56 {
