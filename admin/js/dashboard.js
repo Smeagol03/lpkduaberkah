@@ -4,6 +4,7 @@ import {
   ref,
   onValue,
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAx0MtM4P-TRSltbW1lZd_QRQRSQL46zHw",
@@ -18,9 +19,28 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
+const auth = getAuth(app);
+
+// Fungsi untuk menampilkan pesan error
+function showError(message) {
+  const errorDiv = document.createElement('div');
+  errorDiv.className = 'bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4';
+  errorDiv.innerHTML = `<span class="block sm:inline">${message}</span>`;
+  document.body.insertBefore(errorDiv, document.body.firstChild);
+}
+
+// Fungsi untuk memeriksa apakah pengguna sudah login
+function isAuthenticated(user) {
+  return user !== null && user !== undefined;
+}
 
 // Fungsi untuk mengambil jumlah peserta dari database
-function hitungJumlahPeserta() {
+function hitungJumlahPeserta(user) {
+  if (!isAuthenticated(user)) {
+    showError("Anda harus login untuk mengakses data");
+    return;
+  }
+
   const pesertaRef = ref(database, "peserta");
 
   onValue(pesertaRef, (snapshot) => {
@@ -33,10 +53,18 @@ function hitungJumlahPeserta() {
 
     // Menampilkan jumlah peserta di elemen dengan id 'total-siswa'
     document.getElementById("total-siswa").textContent = jumlahPeserta;
+  }, (error) => {
+    console.error("Error membaca data peserta:", error);
+    showError("Gagal membaca data peserta: " + error.message);
   });
 }
 
-function hitungJumlahPendaftar() {
+function hitungJumlahPendaftar(user) {
+  if (!isAuthenticated(user)) {
+    showError("Anda harus login untuk mengakses data");
+    return;
+  }
+
   const pendaftarRef = ref(database, "pendaftar");
 
   onValue(pendaftarRef, (snapshot) => {
@@ -49,10 +77,18 @@ function hitungJumlahPendaftar() {
 
     // Menampilkan jumlah pendaftar di elemen dengan id 'total-pendaftar'
     document.getElementById("total-pendaftar").textContent = jumlahPendaftar;
+  }, (error) => {
+    console.error("Error membaca data pendaftar:", error);
+    showError("Gagal membaca data pendaftar: " + error.message);
   });
 }
 
-function hitungJumlahPesertaPerPaket() {
+function hitungJumlahPesertaPerPaket(user) {
+  if (!isAuthenticated(user)) {
+    showError("Anda harus login untuk mengakses data");
+    return;
+  }
+
   const pesertaRef = ref(database, "peserta");
 
   onValue(pesertaRef, (snapshot) => {
@@ -84,10 +120,24 @@ function hitungJumlahPesertaPerPaket() {
       document.getElementById(`total-paket-${i}`).textContent =
         paketCount[`paket${i}`];
     }
+  }, (error) => {
+    console.error("Error membaca data peserta per paket:", error);
+    showError("Gagal membaca data peserta per paket: " + error.message);
   });
 }
 
 // Panggil fungsi saat halaman dimuat
-document.addEventListener("DOMContentLoaded", hitungJumlahPeserta);
-document.addEventListener("DOMContentLoaded", hitungJumlahPendaftar);
-document.addEventListener("DOMContentLoaded", hitungJumlahPesertaPerPaket);
+document.addEventListener("DOMContentLoaded", () => {
+  onAuthStateChanged(auth, (user) => {
+    if (isAuthenticated(user)) {
+      hitungJumlahPeserta(user);
+      hitungJumlahPendaftar(user);
+      hitungJumlahPesertaPerPaket(user);
+    } else {
+      showError("Anda harus login untuk mengakses dashboard");
+      setTimeout(() => {
+        window.location.href = "../admin/login.html";
+      }, 2000);
+    }
+  });
+});

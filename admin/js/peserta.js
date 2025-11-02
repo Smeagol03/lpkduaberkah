@@ -8,8 +8,12 @@ import {
   update,
   remove,
   push,
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -26,14 +30,30 @@ const firebaseConfig = {
 // Initialize Firebase
 let app;
 let database;
+let auth;
 let currentPesertaId = null;
 
 function initializeFirebase() {
   if (!app) {
     app = initializeApp(firebaseConfig);
     database = getDatabase(app);
+    auth = getAuth(app);
     console.log("Firebase initialized successfully");
   }
+}
+
+// Fungsi untuk menampilkan pesan error
+function showError(message) {
+  const errorDiv = document.createElement("div");
+  errorDiv.className =
+    "bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4";
+  errorDiv.innerHTML = `<span class="block sm:inline">${message}</span>`;
+  document.body.insertBefore(errorDiv, document.body.firstChild);
+}
+
+// Fungsi untuk memeriksa apakah pengguna sudah login
+function isAuthenticated(user) {
+  return user !== null && user !== undefined;
 }
 
 // Function to format date
@@ -378,11 +398,21 @@ document.addEventListener("DOMContentLoaded", function () {
   // Initialize Firebase
   initializeFirebase();
 
-  // Load peserta data
-  loadPesertaData();
+  // Periksa status autentikasi
+  onAuthStateChanged(auth, (user) => {
+    if (isAuthenticated(user)) {
+      // Load peserta data
+      loadPesertaData();
 
-  // Ensure all event listeners are properly attached
-  setupEventListeners();
+      // Ensure all event listeners are properly attached
+      setupEventListeners();
+    } else {
+      showError("Anda harus login untuk mengakses halaman ini");
+      setTimeout(() => {
+        window.location.href = "../admin/login.html";
+      }, 2000);
+    }
+  });
 
   // Function to setup all event listeners
   function setupEventListeners() {

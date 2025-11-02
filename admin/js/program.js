@@ -13,6 +13,21 @@ const firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
+const auth = firebase.auth();
+
+// Fungsi untuk menampilkan pesan error
+function showError(message) {
+  const errorDiv = document.createElement("div");
+  errorDiv.className =
+    "bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4";
+  errorDiv.innerHTML = `<span class="block sm:inline">${message}</span>`;
+  document.body.insertBefore(errorDiv, document.body.firstChild);
+}
+
+// Fungsi untuk memeriksa apakah pengguna sudah login
+function isAuthenticated(user) {
+  return user !== null && user !== undefined;
+}
 
 // Data program
 let program = [];
@@ -292,6 +307,16 @@ function setupEventListeners() {
 
 // Inisialisasi saat halaman dimuat
 document.addEventListener("DOMContentLoaded", function () {
-  loadProgramData();
-  setupEventListeners();
+  // Periksa status autentikasi
+  auth.onAuthStateChanged(function (user) {
+    if (isAuthenticated(user)) {
+      loadProgramData();
+      setupEventListeners();
+    } else {
+      showError("Anda harus login untuk mengakses halaman ini");
+      setTimeout(() => {
+        window.location.href = "../admin/login.html";
+      }, 2000);
+    }
+  });
 });

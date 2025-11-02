@@ -1,5 +1,5 @@
 // Import Firebase modules
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
 import {
   getDatabase,
   ref,
@@ -8,7 +8,11 @@ import {
   get,
   set,
   push,
-} from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -25,48 +29,75 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
+const auth = getAuth(app);
+
+// Fungsi untuk memvalidasi apakah user sudah login
+function isAdmin(user) {
+  // Cukup periksa apakah user sudah login
+  return user !== null && user !== undefined;
+}
+
+// Fungsi untuk menampilkan pesan error
+function showError(message) {
+  const errorContainer = document.createElement("div");
+  errorContainer.className =
+    "bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4";
+  errorContainer.innerHTML = `
+    <strong class="font-bold">Error!</strong>
+    <span class="block sm:inline">${message}</span>
+  `;
+  document.body.insertBefore(errorContainer, document.body.firstChild);
+}
 
 // Global variable to store current pendaftar ID
 let currentPendaftarId = null;
+let currentUser = null;
 
 // Function to load and display pendaftar data
 function loadPendaftarData() {
+  if (!isAdmin(currentUser)) {
+    showError("Anda tidak memiliki akses untuk melihat data ini.");
+    return;
+  }
+
   const tableBody = document.getElementById("pendaftar-table-body");
   const registrationsRef = ref(database, "pendaftar");
 
-  onValue(registrationsRef, (snapshot) => {
-    // Clear existing table data
-    tableBody.innerHTML = "";
+  onValue(
+    registrationsRef,
+    (snapshot) => {
+      // Clear existing table data
+      tableBody.innerHTML = "";
 
-    // Check if data exists
-    if (snapshot.exists()) {
-      snapshot.forEach((childSnapshot) => {
-        const registrationId = childSnapshot.key;
-        const data = childSnapshot.val();
+      // Check if data exists
+      if (snapshot.exists()) {
+        snapshot.forEach((childSnapshot) => {
+          const registrationId = childSnapshot.key;
+          const data = childSnapshot.val();
 
-        if (!data) {
-          tableBody.innerHTML = `
+          if (!data) {
+            tableBody.innerHTML = `
                                   <tr>
                                     <td colspan="8" class="px-4 py-3 text-center">Tidak ada data pendaftar</td>
                                   </tr>
                                 `;
-          return;
-        }
+            return;
+          }
 
-        // Skip if not in "menunggu" status
-        if (data.statusPendaftaran !== "menunggu") return;
+          // Skip if not in "menunggu" status
+          if (data.statusPendaftaran !== "menunggu") return;
 
-        // Create table row
-        const row = document.createElement("tr");
-        row.className = "text-gray-700 dark:text-gray-400";
+          // Create table row
+          const row = document.createElement("tr");
+          row.className = "text-gray-700 dark:text-gray-400";
 
-        // Format date
-        const registrationDate = data.tanggalDaftar
-          ? new Date(data.tanggalDaftar).toLocaleDateString("id-ID")
-          : "-";
+          // Format date
+          const registrationDate = data.tanggalDaftar
+            ? new Date(data.tanggalDaftar).toLocaleDateString("id-ID")
+            : "-";
 
-        // Create table cells
-        row.innerHTML = `
+          // Create table cells
+          row.innerHTML = `
           <td class="px-4 py-3">${
             data.informasiPribadi?.namaLengkap || "-"
           }</td>
@@ -99,54 +130,65 @@ function loadPendaftarData() {
           </td>
         `;
 
-        tableBody.appendChild(row);
-      });
-
-      // Add event listeners to detail buttons
-      document.querySelectorAll(".btn-detail").forEach((button) => {
-        button.addEventListener("click", () => {
-          const id = button.getAttribute("data-id");
-          showPendaftarDetail(id);
+          tableBody.appendChild(row);
         });
-      });
-    } else {
-      // No data
-      const emptyRow = document.createElement("tr");
-      emptyRow.className = "text-gray-700 dark:text-gray-400";
-      emptyRow.innerHTML = `
+
+        // Add event listeners to detail buttons
+        document.querySelectorAll(".btn-detail").forEach((button) => {
+          button.addEventListener("click", () => {
+            const id = button.getAttribute("data-id");
+            showPendaftarDetail(id);
+          });
+        });
+      } else {
+        // No data
+        const emptyRow = document.createElement("tr");
+        emptyRow.className = "text-gray-700 dark:text-gray-400";
+        emptyRow.innerHTML = `
         <td class="px-4 py-3 text-center" colspan="8">
           Belum ada data pendaftar
         </td>
       `;
-      tableBody.appendChild(emptyRow);
+        tableBody.appendChild(emptyRow);
+      }
+    },
+    (error) => {
+      console.error("Error mengambil data pendaftar:", error);
+      showError("Gagal mengambil data pendaftar: " + error.message);
     }
-  });
+  );
 }
 
 // Function to show pendaftar detail in modal
 function showPendaftarDetail(id) {
+  if (!isAdmin(currentUser)) {
+    showError("Anda tidak memiliki akses untuk melihat detail ini.");
+    return;
+  }
+
   currentPendaftarId = id;
   const pendaftarRef = ref(database, `pendaftar/${id}`);
 
-  get(pendaftarRef).then((snapshot) => {
-    if (snapshot.exists()) {
-      const data = snapshot.val();
-      const modalContent = document.getElementById("modal-content");
-      const modalTitle = document.getElementById("modal-title");
-      const detailModal = document.getElementById("detailModal");
+  get(pendaftarRef)
+    .then((snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const modalContent = document.getElementById("modal-content");
+        const modalTitle = document.getElementById("modal-title");
+        const detailModal = document.getElementById("detailModal");
 
-      // Set modal title
-      modalTitle.textContent = `Detail Pendaftar: ${
-        data.informasiPribadi?.namaLengkap || "Tidak ada nama"
-      }`;
+        // Set modal title
+        modalTitle.textContent = `Detail Pendaftar: ${
+          data.informasiPribadi?.namaLengkap || "Tidak ada nama"
+        }`;
 
-      // Format date
-      const registrationDate = data.tanggalDaftar
-        ? new Date(data.tanggalDaftar).toLocaleDateString("id-ID")
-        : "-";
+        // Format date
+        const registrationDate = data.tanggalDaftar
+          ? new Date(data.tanggalDaftar).toLocaleDateString("id-ID")
+          : "-";
 
-      // Build detail content
-      let detailHTML = `
+        // Build detail content
+        let detailHTML = `
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <h4 class="text-lg font-semibold mb-2">Informasi Pribadi</h4>
@@ -205,25 +247,34 @@ function showPendaftarDetail(id) {
         </div>
       `;
 
-      modalContent.innerHTML = detailHTML;
+        modalContent.innerHTML = detailHTML;
 
-      // Show modal centered on screen
-      detailModal.classList.remove("hidden");
-      detailModal.classList.add(
-        "fixed",
-        "inset-0",
-        "z-50",
-        "flex",
-        "items-center",
-        "justify-center",
-        "bg-gray-900/30"
-      );
-    }
-  });
+        // Show modal centered on screen
+        detailModal.classList.remove("hidden");
+        detailModal.classList.add(
+          "fixed",
+          "inset-0",
+          "z-50",
+          "flex",
+          "items-center",
+          "justify-center",
+          "bg-gray-900/30"
+        );
+      }
+    })
+    .catch((error) => {
+      console.error("Error mengambil detail pendaftar:", error);
+      showError("Gagal mengambil detail pendaftar: " + error.message);
+    });
 }
 
 // Function to validate pendaftar
 function validatePendaftar(id) {
+  if (!isAdmin(currentUser)) {
+    showError("Anda tidak memiliki akses untuk memvalidasi pendaftar.");
+    return;
+  }
+
   if (!id) return;
 
   const pendaftarRef = ref(database, `pendaftar/${id}`);
@@ -289,6 +340,11 @@ function validatePendaftar(id) {
 
 // Function to reject pendaftar
 function rejectPendaftar(id) {
+  if (!isAdmin(currentUser)) {
+    showError("Anda tidak memiliki akses untuk menolak pendaftar.");
+    return;
+  }
+
   if (!id) return;
 
   const pendaftarRef = ref(database, `pendaftar/${id}`);
@@ -317,6 +373,11 @@ function rejectPendaftar(id) {
 
 // Function to filter pendaftar data
 function filterPendaftarData(searchTerm) {
+  if (!isAdmin(currentUser)) {
+    showError("Anda tidak memiliki akses untuk memfilter data ini.");
+    return;
+  }
+
   const pendaftarRef = ref(database, "pendaftar");
   get(pendaftarRef)
     .then((snapshot) => {
@@ -352,11 +413,17 @@ function filterPendaftarData(searchTerm) {
     })
     .catch((error) => {
       console.error("Error filtering pendaftar data:", error);
+      showError("Gagal memfilter data pendaftar: " + error.message);
     });
 }
 
 // Function to display filtered pendaftar data
 function displayFilteredPendaftarData(data) {
+  if (!isAdmin(currentUser)) {
+    showError("Anda tidak memiliki akses untuk melihat data ini.");
+    return;
+  }
+
   const tableBody = document.getElementById("pendaftar-table-body");
 
   // Clear existing table data
@@ -435,39 +502,55 @@ function displayFilteredPendaftarData(data) {
 
 // Initialize when DOM is loaded
 document.addEventListener("DOMContentLoaded", () => {
-  // Load pendaftar data
-  loadPendaftarData();
+  // Check authentication state
+  onAuthStateChanged(auth, (user) => {
+    if (user && isAdmin(user)) {
+      console.log("Admin terautentikasi, mengambil data...");
+      currentUser = user;
 
-  // Add event listeners to buttons
-  document.getElementById("btn-validasi").addEventListener("click", () => {
-    validatePendaftar(currentPendaftarId);
-  });
+      // Load pendaftar data
+      loadPendaftarData();
 
-  document.getElementById("btn-tolak").addEventListener("click", () => {
-    rejectPendaftar(currentPendaftarId);
-  });
+      // Add event listeners to buttons
+      document.getElementById("btn-validasi").addEventListener("click", () => {
+        validatePendaftar(currentPendaftarId);
+      });
 
-  // Add event listeners for modal close buttons
-  const closeButtons = document.querySelectorAll(
-    '[data-modal-hide="detailModal"]'
-  );
-  closeButtons.forEach((button) => {
-    button.addEventListener("click", function () {
-      const detailModal = document.getElementById("detailModal");
-      detailModal.classList.add("hidden");
-    });
-  });
+      document.getElementById("btn-tolak").addEventListener("click", () => {
+        rejectPendaftar(currentPendaftarId);
+      });
 
-  // Add event listener for search input
-  const searchInput = document.getElementById("search-pendaftar");
-  if (searchInput) {
-    searchInput.addEventListener("input", (e) => {
-      const searchTerm = e.target.value.toLowerCase().trim();
-      if (searchTerm === "") {
-        loadPendaftarData(); // Reset to show all data
-      } else {
-        filterPendaftarData(searchTerm);
+      // Add event listeners for modal close buttons
+      const closeButtons = document.querySelectorAll(
+        '[data-modal-hide="detailModal"]'
+      );
+      closeButtons.forEach((button) => {
+        button.addEventListener("click", function () {
+          const detailModal = document.getElementById("detailModal");
+          detailModal.classList.add("hidden");
+        });
+      });
+
+      // Add event listener for search input
+      const searchInput = document.getElementById("search-pendaftar");
+      if (searchInput) {
+        searchInput.addEventListener("input", (e) => {
+          const searchTerm = e.target.value.toLowerCase().trim();
+          if (searchTerm === "") {
+            loadPendaftarData(); // Reset to show all data
+          } else {
+            filterPendaftarData(searchTerm);
+          }
+        });
       }
-    });
-  }
+    } else {
+      console.error("User tidak terautentikasi atau bukan admin");
+      showError("Anda harus login sebagai admin untuk mengakses halaman ini.");
+
+      // Redirect to login page after a short delay
+      setTimeout(() => {
+        window.location.href = "login.html";
+      }, 2000);
+    }
+  });
 });
