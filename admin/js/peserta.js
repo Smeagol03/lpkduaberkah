@@ -84,14 +84,27 @@ function displayPesertaData(data) {
   if (!data) {
     tableBody.innerHTML = `
       <tr>
-        <td colspan="8" class="px-4 py-3 text-center">Tidak ada data peserta</td>
+        <td colspan="9" class="px-4 py-3 text-center">Tidak ada data peserta</td>
       </tr>
     `;
     return;
   }
 
-  Object.keys(data).forEach((key) => {
-    const peserta = data[key];
+  // Convert object to array for sorting
+  const pesertaArray = Object.keys(data).map(key => ({
+    id: key,
+    ...data[key]
+  }));
+  
+  // Sort by tanggalDiterima (newest first)
+  pesertaArray.sort((a, b) => {
+    const dateA = a.tanggalDiterima ? new Date(a.tanggalDiterima).getTime() : 0;
+    const dateB = b.tanggalDiterima ? new Date(b.tanggalDiterima).getTime() : 0;
+    return dateB - dateA; // Descending order (newest first)
+  });
+
+  // Display sorted data with row numbers
+  pesertaArray.forEach((peserta, index) => {
     const row = document.createElement("tr");
     row.className = "text-gray-700 dark:text-gray-400";
 
@@ -113,6 +126,7 @@ function displayPesertaData(data) {
 
     // Tampilkan data sesuai struktur 'pendaftar'
     row.innerHTML = `
+      <td class="px-4 py-3">${index + 1}</td>
       <td class="px-4 py-3">${peserta.informasiPribadi?.namaLengkap || "-"}</td>
       <td class="px-4 py-3">${peserta.informasiPribadi?.nik || "-"}</td>
       <td class="px-4 py-3">${peserta.informasiPribadi?.noHP || "-"}</td>
@@ -125,7 +139,7 @@ function displayPesertaData(data) {
       <td class="px-4 py-3">
         <button 
           class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs"
-          onclick="showPesertaDetail('${key}')"
+          onclick="showPesertaDetail('${peserta.id}')"
         >
           Detail
         </button>

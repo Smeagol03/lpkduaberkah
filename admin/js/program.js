@@ -56,6 +56,13 @@ function loadProgramData() {
       program.push(programData);
     });
 
+    // Sort by tanggalLulus (newest first)
+    program.sort((a, b) => {
+      const dateA = a.tanggalLulus ? new Date(a.tanggalLulus).getTime() : 0;
+      const dateB = b.tanggalLulus ? new Date(b.tanggalLulus).getTime() : 0;
+      return dateB - dateA; // Descending order (newest first)
+    });
+
     displayProgramData(program);
   });
 }
@@ -67,11 +74,11 @@ function displayProgramData(data) {
 
   if (data.length === 0) {
     tableBody.innerHTML =
-      '<tr><td colspan="8" class="px-4 py-3 text-center">Tidak ada data program</td></tr>';
+      '<tr><td colspan="9" class="px-4 py-3 text-center">Tidak ada data program</td></tr>';
     return;
   }
 
-  data.forEach((item) => {
+  data.forEach((item, index) => {
     const row = document.createElement("tr");
     row.className = "text-gray-700 dark:text-gray-400";
 
@@ -80,6 +87,7 @@ function displayProgramData(data) {
       : "-";
 
     row.innerHTML = `
+            <td class="px-4 py-3">${index + 1}</td>
             <td class="px-4 py-3">${
               item.informasiPribadi?.namaLengkap || "-"
             }</td>

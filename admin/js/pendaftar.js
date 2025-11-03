@@ -71,22 +71,38 @@ function loadPendaftarData() {
 
       // Check if data exists
       if (snapshot.exists()) {
+        // Collect all valid data first
+        const pendaftarData = [];
         snapshot.forEach((childSnapshot) => {
           const registrationId = childSnapshot.key;
           const data = childSnapshot.val();
-
-          if (!data) {
-            tableBody.innerHTML = `
-                                  <tr>
-                                    <td colspan="8" class="px-4 py-3 text-center">Tidak ada data pendaftar</td>
-                                  </tr>
-                                `;
-            return;
+          
+          if (data && data.statusPendaftaran === "menunggu") {
+            pendaftarData.push({
+              id: registrationId,
+              ...data
+            });
           }
-
-          // Skip if not in "menunggu" status
-          if (data.statusPendaftaran !== "menunggu") return;
-
+        });
+        
+        if (pendaftarData.length === 0) {
+          tableBody.innerHTML = `
+            <tr>
+              <td colspan="9" class="px-4 py-3 text-center">Tidak ada data pendaftar</td>
+            </tr>
+          `;
+          return;
+        }
+        
+        // Sort data by registration date (newest first)
+        pendaftarData.sort((a, b) => {
+          const dateA = a.tanggalDaftar ? new Date(a.tanggalDaftar).getTime() : 0;
+          const dateB = b.tanggalDaftar ? new Date(b.tanggalDaftar).getTime() : 0;
+          return dateB - dateA; // Descending order (newest first)
+        });
+        
+        // Display sorted data with row numbers
+        pendaftarData.forEach((data, index) => {
           // Create table row
           const row = document.createElement("tr");
           row.className = "text-gray-700 dark:text-gray-400";
@@ -96,8 +112,9 @@ function loadPendaftarData() {
             ? new Date(data.tanggalDaftar).toLocaleDateString("id-ID")
             : "-";
 
-          // Create table cells
+          // Create table cells with row number
           row.innerHTML = `
+          <td class="px-4 py-3">${index + 1}</td>
           <td class="px-4 py-3">${
             data.informasiPribadi?.namaLengkap || "-"
           }</td>
@@ -118,7 +135,7 @@ function loadPendaftarData() {
               <button
                 class="flex items-center justify-between px-2 py-2 text-sm font-medium leading-5 text-purple-600 rounded-lg dark:text-gray-400 focus:outline-none focus:shadow-outline-gray btn-detail"
                 aria-label="Detail"
-                data-id="${registrationId}"
+                data-id="${data.id}"
                 data-modal-target="detailModal"
                 data-modal-toggle="detailModal">
                 <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
