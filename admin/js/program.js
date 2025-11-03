@@ -1,4 +1,17 @@
-// Firebase configuration
+// Import Firebase modules
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+import {
+  getDatabase,
+  ref,
+  onValue,
+  remove,
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyAx0MtM4P-TRSltbW1lZd_QRQRSQL46zHw",
   authDomain: "lpkduaberkah-59a86.firebaseapp.com",
@@ -11,32 +24,31 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
-const auth = firebase.auth();
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
+const auth = getAuth(app);
 
-// Fungsi untuk menampilkan pesan error
+// Fungsi error
 function showError(message) {
-  const errorDiv = document.createElement("div");
-  errorDiv.className =
+  const div = document.createElement("div");
+  div.className =
     "bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4";
-  errorDiv.innerHTML = `<span class="block sm:inline">${message}</span>`;
-  document.body.insertBefore(errorDiv, document.body.firstChild);
+  div.innerHTML = `<span class="block sm:inline">${message}</span>`;
+  document.body.insertBefore(div, document.body.firstChild);
 }
 
-// Fungsi untuk memeriksa apakah pengguna sudah login
+// Cek login
 function isAuthenticated(user) {
   return user !== null && user !== undefined;
 }
 
-// Data program
 let program = [];
 
 // Load data program dari Firebase
 function loadProgramData() {
-  const programRef = database.ref("program");
+  const programRef = ref(database, "program");
 
-  programRef.on("value", (snapshot) => {
+  onValue(programRef, (snapshot) => {
     program = [];
     snapshot.forEach((childSnapshot) => {
       const programData = childSnapshot.val();
@@ -200,24 +212,10 @@ function showProgramDetail(programId) {
     };
   });
 
-  // Set event listener untuk tombol cetak
-  document.getElementById("btn-cetak").onclick = function () {
-    cetakSertifikat(programData);
-  };
-
   // Set event listener untuk tombol hapus
   document.getElementById("btn-hapus").onclick = function () {
     hapusProgram(programData.id);
   };
-}
-
-// Fungsi untuk mencetak sertifikat
-function cetakSertifikat(programData) {
-  // Implementasi cetak sertifikat
-  alert(
-    `Mencetak sertifikat untuk ${programData.informasiPribadi?.namaLengkap}`
-  );
-  // Disini bisa ditambahkan logika untuk mencetak sertifikat
 }
 
 // Fungsi untuk menghapus data program
@@ -228,10 +226,9 @@ function hapusProgram(programId) {
   }
 
   if (confirm("Apakah Anda yakin ingin menghapus data program ini?")) {
-    const programRef = database.ref(`program/${programId}`);
+    const programRef = ref(database, `program/${programId}`);
 
-    programRef
-      .remove()
+    remove(programRef)
       .then(() => {
         // Tutup modal
         const modal = document.getElementById("detailProgram");
@@ -281,18 +278,6 @@ function setupEventListeners() {
   if (searchInput) {
     searchInput.addEventListener("input", function () {
       filterProgramData(this.value);
-    });
-  }
-
-  // Event listener untuk tombol cetak
-  const btnCetak = document.getElementById("btn-cetak");
-  if (btnCetak) {
-    btnCetak.addEventListener("click", function () {
-      const programId = this.getAttribute("data-id");
-      const programData = program.find((item) => item.id === programId);
-      if (programData) {
-        cetakSertifikat(programData);
-      }
     });
   }
 
