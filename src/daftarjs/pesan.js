@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       // Menambahkan kalimat layanan website LPK2BERKAH sebelum isi pesan
-      const pesanLengkap = `Layanan website LPK2BERKAH :\n${pesan}`;
+      const pesanLengkap = `Layanan website LPK & LKP 2 BERKAH :\n${pesan}`;
 
       // Membuat URL WhatsApp dengan pesan
       const whatsappURL = `https://wa.me/${nomorWhatsApp}?text=${encodeURIComponent(
