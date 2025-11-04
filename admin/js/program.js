@@ -5,6 +5,7 @@ import {
   ref,
   onValue,
   remove,
+  get,
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
 import {
   getAuth,
@@ -255,6 +256,147 @@ function hapusProgram(programId) {
   }
 }
 
+// Fungsi: Hapus semua data program
+function deleteAllProgram() {
+  const btn = document.getElementById("hapus-semua-program");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Memproses...";
+  }
+
+  const programRef = ref(database, "program");
+  get(programRef)
+    .then((snapshot) => {
+      if (!snapshot.exists()) {
+        alert("Tidak ada data program.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Hapus Semua";
+        }
+        return;
+      }
+
+      // Kumpulkan semua item
+      const allItems = [];
+      snapshot.forEach((child) => {
+        const data = child.val();
+        allItems.push({ id: child.key, data });
+      });
+
+      if (allItems.length === 0) {
+        alert("Tidak ada data program untuk dihapus.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Hapus Semua";
+        }
+        return;
+      }
+
+      // Meminta tanggal batas opsional
+      const input = prompt(
+        "Masukkan tanggal batas (YYYY-MM-DD) untuk menghapus data sebelum tanggal tersebut, atau kosongkan untuk menghapus semua:",
+        ""
+      );
+
+      let cutoffDate = null;
+      if (input && input.trim() !== "") {
+        const parsed = new Date(input.trim() + "T00:00:00");
+        if (isNaN(parsed.getTime())) {
+          alert("Format tanggal tidak valid. Gunakan format YYYY-MM-DD.");
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Hapus Semua";
+          }
+          return;
+        }
+        cutoffDate = parsed;
+      }
+
+      // Tentukan item yang akan dihapus
+      const itemsToDelete = cutoffDate
+        ? allItems.filter((item) => {
+            if (!item.data || !item.data.tanggalLulus) return false;
+            const t = new Date(item.data.tanggalLulus);
+            return !isNaN(t.getTime()) && t < cutoffDate;
+          })
+        : allItems;
+
+      if (itemsToDelete.length === 0) {
+        alert("Tidak ada data yang memenuhi kriteria untuk dihapus.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Hapus Semua";
+        }
+        return;
+      }
+
+      // Konfirmasi akhir sebelum menghapus (backup akan dibuat setelah konfirmasi)
+      const confirmMessage = cutoffDate
+        ? `Yakin menghapus ${itemsToDelete.length} data program sebelum ${input}?\nBackup akan dibuat dan diunduh.`
+        : `Yakin menghapus ${itemsToDelete.length} data program?\nBackup akan dibuat dan diunduh.`;
+      if (!confirm(confirmMessage)) {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Hapus Semua";
+        }
+        return;
+      }
+
+      // Buat backup JSON dari data yang akan dihapus (setelah konfirmasi)
+      const backupName = `program-backup-${new Date()
+        .toISOString()
+        .replace(/[:.]/g, "-")}.json`;
+      const backupContent = itemsToDelete.map((it) => ({
+        id: it.id,
+        ...it.data,
+      }));
+      (function downloadJson(filename, content) {
+        const blob = new Blob([JSON.stringify(content, null, 2)], {
+          type: "application/json",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      })(backupName, backupContent);
+
+      // Eksekusi penghapusan
+      const tasks = itemsToDelete.map((item) => {
+        const itemRef = ref(database, `program/${item.id}`);
+        return remove(itemRef);
+      });
+
+      return Promise.allSettled(tasks).then((results) => {
+        const successCount = results.filter(
+          (r) => r.status === "fulfilled"
+        ).length;
+        const failCount = results.length - successCount;
+        alert(
+          `Berhasil menghapus ${successCount} data program.${
+            failCount > 0 ? ` Gagal: ${failCount}.` : ""
+          }`
+        );
+        loadProgramData();
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Hapus Semua";
+        }
+      });
+    })
+    .catch((error) => {
+      console.error("Error memproses Hapus Semua program:", error);
+      alert("Gagal memproses Hapus Semua: " + error.message);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Hapus Semua";
+      }
+    });
+}
+
 // Fungsi filter data program
 function filterProgramData(searchTerm) {
   if (!searchTerm) {
@@ -296,6 +438,12 @@ function setupEventListeners() {
       modal.classList.add("hidden");
     }
   });
+
+  // Event listener untuk tombol Hapus Semua Program
+  const hapusSemuaBtn = document.getElementById("hapus-semua-program");
+  if (hapusSemuaBtn) {
+    hapusSemuaBtn.addEventListener("click", deleteAllProgram);
+  }
 }
 
 // Inisialisasi saat halaman dimuat

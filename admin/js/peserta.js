@@ -91,11 +91,11 @@ function displayPesertaData(data) {
   }
 
   // Convert object to array for sorting
-  const pesertaArray = Object.keys(data).map(key => ({
+  const pesertaArray = Object.keys(data).map((key) => ({
     id: key,
-    ...data[key]
+    ...data[key],
   }));
-  
+
   // Sort by tanggalDiterima (newest first)
   pesertaArray.sort((a, b) => {
     const dateA = a.tanggalDiterima ? new Date(a.tanggalDiterima).getTime() : 0;
@@ -420,6 +420,29 @@ document.addEventListener("DOMContentLoaded", function () {
 
       // Ensure all event listeners are properly attached
       setupEventListeners();
+
+      // Add event listeners for batch buttons
+      const terimaSemuaBtn = document.getElementById("terima-semua-peserta");
+      const luluskanSemuaBtn = document.getElementById(
+        "luluskan-semua-peserta"
+      );
+      const tolakSemuaBtn = document.getElementById("tolak-semua-peserta");
+      const hapusSemuaBtn = document.getElementById("hapus-semua-peserta");
+
+      if (terimaSemuaBtn) {
+        terimaSemuaBtn.addEventListener("click", graduateAllPeserta);
+      }
+      if (luluskanSemuaBtn) {
+        luluskanSemuaBtn.addEventListener("click", activateAllPeserta);
+      }
+
+      if (tolakSemuaBtn) {
+        tolakSemuaBtn.addEventListener("click", failAllPeserta);
+      }
+
+      if (hapusSemuaBtn) {
+        hapusSemuaBtn.addEventListener("click", deleteAllPeserta);
+      }
     } else {
       showError("Anda harus login untuk mengakses halaman ini");
       setTimeout(() => {
@@ -475,7 +498,425 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 });
 
+// Fungsi: Terima semua peserta aktif (pindah ke program)
+function graduateAllPeserta() {
+  const btn = document.getElementById("terima-semua-peserta");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Memproses...";
+  }
+
+  const pesertaRef = ref(database, "peserta");
+  get(pesertaRef)
+    .then((snapshot) => {
+      if (!snapshot.exists()) {
+        alert("Tidak ada data peserta.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Terima Semua";
+        }
+        return;
+      }
+
+      // Collect active peserta
+      const activePeserta = [];
+      snapshot.forEach((child) => {
+        const data = child.val();
+        if (data && data.statusPeserta === "aktif") {
+          activePeserta.push({
+            id: child.key,
+            data: data,
+          });
+        }
+      });
+
+      if (activePeserta.length === 0) {
+        alert("Tidak ada peserta aktif untuk diluluskan.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Terima Semua";
+        }
+        return;
+      }
+
+      // Confirmation dialog
+      const confirmMessage = `Yakin meluluskan ${activePeserta.length} peserta aktif? Tindakan ini akan memindahkan mereka ke database program dan menghapus dari peserta.`;
+      if (!confirm(confirmMessage)) {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Terima Semua";
+        }
+        return;
+      }
+
+      // Process each peserta
+      const tasks = activePeserta.map((peserta) => {
+        const programData = {
+          ...peserta.data,
+          statusPeserta: "lulus",
+          tanggalLulus: new Date().toISOString(),
+        };
+
+        const programRef = ref(database, "program");
+        const newProgramRef = push(programRef);
+        const pesertaItemRef = ref(database, `peserta/${peserta.id}`);
+
+        // Save to program then remove from peserta
+        return set(newProgramRef, programData).then(() =>
+          remove(pesertaItemRef)
+        );
+      });
+
+      return Promise.allSettled(tasks).then((results) => {
+        const successCount = results.filter(
+          (r) => r.status === "fulfilled"
+        ).length;
+        const failCount = results.length - successCount;
+        alert(
+          `Berhasil meluluskan ${successCount} peserta.${
+            failCount > 0 ? ` Gagal: ${failCount}.` : ""
+          }`
+        );
+        loadPesertaData();
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Terima Semua";
+        }
+      });
+    })
+    .catch((error) => {
+      console.error("Error memproses Terima Semua:", error);
+      alert("Gagal memproses Terima Semua: " + error.message);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Terima Semua";
+      }
+    });
+}
+
+// Fungsi: Tolak semua peserta aktif (ubah status tidak lulus)
+function failAllPeserta() {
+  const btn = document.getElementById("tolak-semua-peserta");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Memproses...";
+  }
+
+  const pesertaRef = ref(database, "peserta");
+  get(pesertaRef)
+    .then((snapshot) => {
+      if (!snapshot.exists()) {
+        alert("Tidak ada data peserta.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Tolak Semua";
+        }
+        return;
+      }
+
+      // Collect active peserta
+      const activePeserta = [];
+      snapshot.forEach((child) => {
+        const data = child.val();
+        if (data && data.statusPeserta === "aktif") {
+          activePeserta.push({
+            id: child.key,
+            data: data,
+          });
+        }
+      });
+
+      if (activePeserta.length === 0) {
+        alert("Tidak ada peserta aktif untuk diubah statusnya.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Tolak Semua";
+        }
+        return;
+      }
+
+      // Confirmation dialog
+      const confirmMessage = `Yakin mengubah status ${activePeserta.length} peserta aktif menjadi tidak lulus? Tindakan ini tidak dapat dibatalkan.`;
+      if (!confirm(confirmMessage)) {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Tolak Semua";
+        }
+        return;
+      }
+
+      // Process each peserta
+      const tasks = activePeserta.map((peserta) => {
+        const pesertaItemRef = ref(database, `peserta/${peserta.id}`);
+        return update(pesertaItemRef, {
+          statusPeserta: "tidak lulus",
+          tanggalTidakLulus: new Date().toISOString(),
+        });
+      });
+
+      return Promise.allSettled(tasks).then((results) => {
+        const successCount = results.filter(
+          (r) => r.status === "fulfilled"
+        ).length;
+        const failCount = results.length - successCount;
+        alert(
+          `Berhasil mengubah status ${successCount} peserta menjadi tidak lulus.${
+            failCount > 0 ? ` Gagal: ${failCount}.` : ""
+          }`
+        );
+        loadPesertaData();
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Tolak Semua";
+        }
+      });
+    })
+    .catch((error) => {
+      console.error("Error memproses Tolak Semua:", error);
+      alert("Gagal memproses Tolak Semua: " + error.message);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Tolak Semua";
+      }
+    });
+}
+
+// Fungsi: Aktifkan semua peserta (set statusPeserta menjadi 'aktif')
+function activateAllPeserta() {
+  const btn = document.getElementById("luluskan-semua-peserta");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Memproses...";
+  }
+
+  const pesertaRef = ref(database, "peserta");
+  get(pesertaRef)
+    .then((snapshot) => {
+      if (!snapshot.exists()) {
+        alert("Tidak ada data peserta.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Luluskan Semua";
+        }
+        return;
+      }
+
+      const toActivate = [];
+      snapshot.forEach((child) => {
+        const data = child.val();
+        // Kumpulkan semua peserta yang statusnya bukan 'aktif'
+        if (!data || data.statusPeserta !== "aktif") {
+          toActivate.push({ id: child.key, data });
+        }
+      });
+
+      if (toActivate.length === 0) {
+        alert("Semua peserta sudah berstatus aktif.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Luluskan Semua";
+        }
+        return;
+      }
+
+      // Konfirmasi sebelum eksekusi
+      const confirmMessage = `Yakin mengaktifkan ${toActivate.length} peserta? Status akan diubah menjadi 'aktif'.`;
+      if (!confirm(confirmMessage)) {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Luluskan Semua";
+        }
+        return;
+      }
+
+      const tasks = toActivate.map((p) => {
+        const pesertaItemRef = ref(database, `peserta/${p.id}`);
+        const payload = {
+          statusPeserta: "aktif",
+        };
+        // Jika belum ada tanggalDiterima, set sekarang
+        if (!p.data || !p.data.tanggalDiterima) {
+          payload.tanggalDiterima = new Date().toISOString();
+        }
+        // Hapus tanggalTidakLulus atau tanggalLulus jika ada
+        payload.tanggalTidakLulus = null;
+        payload.tanggalLulus = null;
+        return update(pesertaItemRef, payload);
+      });
+
+      return Promise.allSettled(tasks).then((results) => {
+        const successCount = results.filter(
+          (r) => r.status === "fulfilled"
+        ).length;
+        const failCount = results.length - successCount;
+        alert(
+          `Berhasil mengaktifkan ${successCount} peserta.${
+            failCount > 0 ? ` Gagal: ${failCount}.` : ""
+          }`
+        );
+        loadPesertaData();
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Luluskan Semua";
+        }
+      });
+    })
+    .catch((error) => {
+      console.error("Error memproses Aktifkan Semua:", error);
+      alert("Gagal memproses Aktifkan Semua: " + error.message);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Luluskan Semua";
+      }
+    });
+}
+
+// Fungsi: Hapus semua peserta (dengan cutoff tanggal & backup JSON)
+function deleteAllPeserta() {
+  const btn = document.getElementById("hapus-semua-peserta");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Memproses...";
+  }
+
+  const pesertaRef = ref(database, "peserta");
+  get(pesertaRef)
+    .then((snapshot) => {
+      if (!snapshot.exists()) {
+        alert("Tidak ada data peserta.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Hapus Semua";
+        }
+        return;
+      }
+
+      // Kumpulkan semua item peserta
+      const allItems = [];
+      snapshot.forEach((child) => {
+        const data = child.val();
+        allItems.push({ id: child.key, data });
+      });
+
+      if (allItems.length === 0) {
+        alert("Tidak ada data peserta untuk dihapus.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Hapus Semua";
+        }
+        return;
+      }
+
+      // Meminta tanggal batas opsional
+      const input = prompt(
+        "Masukkan tanggal batas (YYYY-MM-DD) untuk menghapus peserta yang diterima sebelum tanggal tersebut, atau kosongkan untuk menghapus semua:",
+        ""
+      );
+
+      let cutoffDate = null;
+      if (input && input.trim() !== "") {
+        const parsed = new Date(input.trim() + "T00:00:00");
+        if (isNaN(parsed.getTime())) {
+          alert("Format tanggal tidak valid. Gunakan format YYYY-MM-DD.");
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Hapus Semua";
+          }
+          return;
+        }
+        cutoffDate = parsed;
+      }
+
+      // Tentukan item yang akan dihapus (berdasarkan tanggalDiterima jika tersedia)
+      const itemsToDelete = cutoffDate
+        ? allItems.filter((item) => {
+            const tStr = item.data?.tanggalDiterima;
+            if (!tStr) return false;
+            const t = new Date(tStr);
+            return !isNaN(t.getTime()) && t < cutoffDate;
+          })
+        : allItems;
+
+      if (itemsToDelete.length === 0) {
+        alert("Tidak ada data yang memenuhi kriteria untuk dihapus.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Hapus Semua";
+        }
+        return;
+      }
+
+      // Konfirmasi akhir sebelum menghapus (backup akan dibuat setelah konfirmasi)
+      const confirmMessage = cutoffDate
+        ? `Yakin menghapus ${itemsToDelete.length} peserta yang diterima sebelum ${input}?\nBackup akan dibuat dan diunduh.`
+        : `Yakin menghapus ${itemsToDelete.length} peserta?\nBackup akan dibuat dan diunduh.`;
+      if (!confirm(confirmMessage)) {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Hapus Semua";
+        }
+        return;
+      }
+
+      // Buat backup JSON dari data yang akan dihapus (setelah konfirmasi)
+      const backupName = `peserta-backup-${new Date()
+        .toISOString()
+        .replace(/[:.]/g, "-")}.json`;
+      const backupContent = itemsToDelete.map((it) => ({
+        id: it.id,
+        ...it.data,
+      }));
+      (function downloadJson(filename, content) {
+        const blob = new Blob([JSON.stringify(content, null, 2)], {
+          type: "application/json",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      })(backupName, backupContent);
+
+      // Eksekusi penghapusan
+      const tasks = itemsToDelete.map((item) => {
+        const itemRef = ref(database, `peserta/${item.id}`);
+        return remove(itemRef);
+      });
+
+      return Promise.allSettled(tasks).then((results) => {
+        const successCount = results.filter(
+          (r) => r.status === "fulfilled"
+        ).length;
+        const failCount = results.length - successCount;
+        alert(
+          `Berhasil menghapus ${successCount} data peserta.${
+            failCount > 0 ? ` Gagal: ${failCount}.` : ""
+          }`
+        );
+        loadPesertaData();
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Hapus Semua";
+        }
+      });
+    })
+    .catch((error) => {
+      console.error("Error memproses Hapus Semua:", error);
+      alert("Gagal memproses Hapus Semua: " + error.message);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Hapus Semua";
+      }
+    });
+}
+
 // Make functions available globally
 window.showPesertaDetail = showPesertaDetail;
 window.lulusPeserta = lulusPeserta;
 window.tidakLulusPeserta = tidakLulusPeserta;
+window.graduateAllPeserta = graduateAllPeserta;
+window.failAllPeserta = failAllPeserta;
+window.deleteAllPeserta = deleteAllPeserta;

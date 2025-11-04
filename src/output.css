@@ -16,6 +16,7 @@
     --color-red-600: #DC2626;
     --color-red-700: #B91C1C;
     --color-red-800: #991B1B;
+    --color-red-900: #7F1D1D;
     --color-orange-100: #FEEBC8;
     --color-orange-700: #9C4221;
     --color-amber-100: oklch(96.2% 0.059 95.617);
@@ -324,9 +325,6 @@
   }
   .-bottom-6 {
     bottom: calc(var(--spacing) * -6);
-  }
-  .bottom-0 {
-    bottom: calc(var(--spacing) * 0);
   }
   .bottom-20 {
     bottom: calc(var(--spacing) * 20);
@@ -886,9 +884,6 @@
   .border-white {
     border-color: var(--color-white);
   }
-  .bg-black {
-    background-color: var(--color-black);
-  }
   .bg-blue-100 {
     background-color: var(--color-blue-100);
   }
@@ -949,8 +944,14 @@
   .bg-red-500 {
     background-color: var(--color-red-500);
   }
+  .bg-red-600 {
+    background-color: var(--color-red-600);
+  }
   .bg-red-700 {
     background-color: var(--color-red-700);
+  }
+  .bg-red-800 {
+    background-color: var(--color-red-800);
   }
   .bg-rose-600 {
     background-color: var(--color-rose-600);
@@ -1514,10 +1515,24 @@
       }
     }
   }
+  .hover\:bg-red-700 {
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-red-700);
+      }
+    }
+  }
   .hover\:bg-red-800 {
     &:hover {
       @media (hover: hover) {
         background-color: var(--color-red-800);
+      }
+    }
+  }
+  .hover\:bg-red-900 {
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-red-900);
       }
     }
   }

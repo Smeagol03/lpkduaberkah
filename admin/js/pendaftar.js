@@ -76,15 +76,15 @@ function loadPendaftarData() {
         snapshot.forEach((childSnapshot) => {
           const registrationId = childSnapshot.key;
           const data = childSnapshot.val();
-          
+
           if (data && data.statusPendaftaran === "menunggu") {
             pendaftarData.push({
               id: registrationId,
-              ...data
+              ...data,
             });
           }
         });
-        
+
         if (pendaftarData.length === 0) {
           tableBody.innerHTML = `
             <tr>
@@ -93,14 +93,18 @@ function loadPendaftarData() {
           `;
           return;
         }
-        
+
         // Sort data by registration date (newest first)
         pendaftarData.sort((a, b) => {
-          const dateA = a.tanggalDaftar ? new Date(a.tanggalDaftar).getTime() : 0;
-          const dateB = b.tanggalDaftar ? new Date(b.tanggalDaftar).getTime() : 0;
+          const dateA = a.tanggalDaftar
+            ? new Date(a.tanggalDaftar).getTime()
+            : 0;
+          const dateB = b.tanggalDaftar
+            ? new Date(b.tanggalDaftar).getTime()
+            : 0;
           return dateB - dateA; // Descending order (newest first)
         });
-        
+
         // Display sorted data with row numbers
         pendaftarData.forEach((data, index) => {
           // Create table row
@@ -388,6 +392,192 @@ function rejectPendaftar(id) {
     });
 }
 
+// Fungsi: Terima semua pendaftar berstatus "menunggu"
+function validateAllPendaftar() {
+  if (!isAdmin(currentUser)) {
+    showError("Anda tidak memiliki akses untuk memvalidasi pendaftar.");
+    return;
+  }
+
+  const btn = document.getElementById("terima-semua-pendaftar");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Memproses...";
+  }
+
+  const pendaftarRef = ref(database, "pendaftar");
+  get(pendaftarRef)
+    .then((snapshot) => {
+      if (!snapshot.exists()) {
+        alert("Tidak ada data pendaftar.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Terima Semua";
+        }
+        return;
+      }
+      // Kumpulkan kandidat yang berstatus "menunggu"
+      const candidates = [];
+      snapshot.forEach((child) => {
+        const id = child.key;
+        const data = child.val();
+        if (data && data.statusPendaftaran === "menunggu") {
+          candidates.push({ id, data });
+        }
+      });
+
+      if (candidates.length === 0) {
+        alert("Tidak ada pendaftar berstatus menunggu untuk divalidasi.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Terima Semua";
+        }
+        return;
+      }
+
+      // Konfirmasi sebelum eksekusi
+      const proceed = confirm(
+        `Yakin memvalidasi ${candidates.length} pendaftar?\nTindakan ini akan memindahkan ke data peserta dan menghapus dari daftar pendaftar.`
+      );
+      if (!proceed) {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Terima Semua";
+        }
+        return;
+      }
+
+      // Bangun tugas dari kandidat
+      const tasks = candidates.map(({ id, data }) => {
+        const pesertaRef = ref(database, "peserta");
+        const newPesertaRef = push(pesertaRef);
+        const pesertaData = {
+          ...data,
+          statusPeserta: "aktif",
+          tanggalDiterima: new Date().toISOString(),
+        };
+
+        const pendaftarItemRef = ref(database, `pendaftar/${id}`);
+        return set(newPesertaRef, pesertaData).then(() =>
+          set(pendaftarItemRef, null)
+        );
+      });
+
+      return Promise.allSettled(tasks).then((results) => {
+        const successCount = results.filter(
+          (r) => r.status === "fulfilled"
+        ).length;
+        const failCount = results.length - successCount;
+        alert(
+          `Berhasil memvalidasi ${successCount} pendaftar.${
+            failCount > 0 ? ` Gagal: ${failCount}.` : ""
+          }`
+        );
+        loadPendaftarData();
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Terima Semua";
+        }
+      });
+    })
+    .catch((error) => {
+      console.error("Error memproses Terima Semua:", error);
+      showError("Gagal memproses Terima Semua: " + error.message);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Terima Semua";
+      }
+    });
+}
+
+// Fungsi: Tolak semua pendaftar berstatus "menunggu"
+function rejectAllPendaftar() {
+  if (!isAdmin(currentUser)) {
+    showError("Anda tidak memiliki akses untuk menolak pendaftar.");
+    return;
+  }
+
+  const btn = document.getElementById("tolak-semua-pendaftar");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Memproses...";
+  }
+
+  const pendaftarRef = ref(database, "pendaftar");
+  get(pendaftarRef)
+    .then((snapshot) => {
+      if (!snapshot.exists()) {
+        alert("Tidak ada data pendaftar.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Tolak Semua";
+        }
+        return;
+      }
+      // Kumpulkan kandidat yang berstatus "menunggu"
+      const candidates = [];
+      snapshot.forEach((child) => {
+        const id = child.key;
+        const data = child.val();
+        if (data && data.statusPendaftaran === "menunggu") {
+          candidates.push({ id, data });
+        }
+      });
+
+      if (candidates.length === 0) {
+        alert("Tidak ada pendaftar berstatus menunggu untuk ditolak.");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Tolak Semua";
+        }
+        return;
+      }
+
+      // Konfirmasi sebelum eksekusi
+      const proceed = confirm(
+        `Yakin menolak ${candidates.length} pendaftar?\nTindakan ini akan menghapus data pendaftar dan tidak dapat dibatalkan.`
+      );
+      if (!proceed) {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Tolak Semua";
+        }
+        return;
+      }
+
+      // Bangun tugas dari kandidat
+      const tasks = candidates.map(({ id }) => {
+        const pendaftarItemRef = ref(database, `pendaftar/${id}`);
+        return set(pendaftarItemRef, null);
+      });
+
+      return Promise.allSettled(tasks).then((results) => {
+        const successCount = results.filter(
+          (r) => r.status === "fulfilled"
+        ).length;
+        const failCount = results.length - successCount;
+        alert(
+          `Berhasil menolak ${successCount} pendaftar.${
+            failCount > 0 ? ` Gagal: ${failCount}.` : ""
+          }`
+        );
+        loadPendaftarData();
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Tolak Semua";
+        }
+      });
+    })
+    .catch((error) => {
+      console.error("Error memproses Tolak Semua:", error);
+      showError("Gagal memproses Tolak Semua: " + error.message);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Tolak Semua";
+      }
+    });
+}
+
 // Function to filter pendaftar data
 function filterPendaftarData(searchTerm) {
   if (!isAdmin(currentUser)) {
@@ -559,6 +749,16 @@ document.addEventListener("DOMContentLoaded", () => {
             filterPendaftarData(searchTerm);
           }
         });
+      }
+
+      // Event listeners untuk aksi batch
+      const terimaSemuaBtn = document.getElementById("terima-semua-pendaftar");
+      if (terimaSemuaBtn) {
+        terimaSemuaBtn.addEventListener("click", validateAllPendaftar);
+      }
+      const tolakSemuaBtn = document.getElementById("tolak-semua-pendaftar");
+      if (tolakSemuaBtn) {
+        tolakSemuaBtn.addEventListener("click", rejectAllPendaftar);
       }
     } else {
       console.error("User tidak terautentikasi atau bukan admin");
